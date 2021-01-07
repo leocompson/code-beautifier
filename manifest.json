@@ -1,0 +1,35 @@
+{
+  "version": "0.1.0",
+  "manifest_version": 2,
+  "offline_enabled": true,
+  "permissions": ["storage"],
+  "short_name": "code-beautifier",
+  "name": "Code Beautifier (JS, CSS, HTML)",
+  "homepage_url": "https://mybrowseraddon.com/code-beautifier.html",
+  "description": "A lite and free JavasScript, CSS and HTML beautifier for your browser.",
+  "background": {
+    "persistent": false,
+    "scripts": [
+      "lib/config.js", 
+      "lib/chrome.js",
+      "lib/runtime.js",
+      "lib/common.js"
+    ]
+  },
+  "browser_action": {
+    "default_title": "Code Beautifier",
+    "default_icon": {
+      "16": "data/icons/16.png",
+      "32": "data/icons/32.png",
+      "48": "data/icons/48.png",
+      "64": "data/icons/64.png"
+    }
+  },
+  "icons": {
+    "16": "data/icons/16.png",
+    "32": "data/icons/32.png",
+    "48": "data/icons/48.png",
+    "64": "data/icons/64.png",
+    "128": "data/icons/128.png"
+  }
+}
