@@ -2,7 +2,7 @@ Code Beautifier application enables you to beautify JavaScript, CSS, and HTML co
 
 You can install this app as a PWA on your mobile device, moreover, it is available as a browser extension as-well-as a web application:
 
-Chrome: https://chrome.google.com/webstore/detail/code-beautifier-js-css-ht/lflcmgiebpalnlcjbadhamjfkmkfpjmg 
+Chrome: https://chrome.google.com/webstore/detail/code-beautifier-js-css-ht/lflcmgiebpalnlcjbadhamjfkmkfpjmg  
 Edge: https://microsoftedge.microsoft.com/addons/detail/code-beautifier-js-css/kafehfaeelkaeofmlpooeniecnacleff  
 Firefox: https://addons.mozilla.org/en-US/firefox/addon/code-beautifier-js-css-html/  
 Opera: https://addons.opera.com/en/extensions/details/code-beautifier-js-css-html/  
