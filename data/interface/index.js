@@ -97,12 +97,12 @@ var config  = {
     var fileio = document.getElementById("fileio");
     var reload = document.getElementById("reload");
     var support = document.getElementById("support");
-    var beautify = document.getElementById("beautify");
     var language = document.getElementById("language");
     var donation = document.getElementById("donation");
     var download = document.getElementById("download");
     var clipboard = document.getElementById("clipboard");
     var file = document.querySelector("input[type='file']");
+    var beautifybutton = document.getElementById("beautifybutton");
     /*  */
     fileio.addEventListener("click", function () {file.click()}, false);
     download.addEventListener("click", config.app.download.result, false);
@@ -131,21 +131,26 @@ var config  = {
     }, false);
     /*  */
     language.addEventListener("change", function (e) {
-      config.storage.write("language", e.target.value);
       config.beautifier.language = e.target.value;
+      config.storage.write("language", config.beautifier.language);
+      /*  */
       config.app.update.editor();
     }, false);
     /*  */
-    beautify.addEventListener("click", function () {
-      var txt = config.codemirror.editor.input.getValue();
-      if (txt) {
-        var tmp = config.beautifier.language.replace("text/", '');
-        config.app.engine = tmp === "javascript" ? js_beautify : (tmp === "css" ? css_beautify : html_beautify);
-        /*  */
-        var result = config.app.engine(txt, config.beautifier.options);
-        if (result) {
-          config.codemirror.editor.output.setValue(result);
+    beautifybutton.addEventListener("click", function () {
+      try {
+        var txt = config.codemirror.editor.input.getValue();
+        if (txt) {
+          var tmp = config.beautifier.language.replace("text/", '');
+          config.app.engine = tmp === "javascript" ? js_beautify : (tmp === "css" ? css_beautify : html_beautify);
+          /*  */
+          var result = config.app.engine(txt, config.beautifier.options);
+          if (result) {
+            config.codemirror.editor.output.setValue(result);
+          }
         }
+      } catch (e) {
+        window.alert("An error has occurred! Please change the input language and try again.");
       }
     }, false);
     /*  */
@@ -168,7 +173,7 @@ var config  = {
           if (e.target.files[0]) {
             config.app.file.process(e.target.files[0], function (txt) {
               config.codemirror.editor.input.setValue(txt);
-              window.setTimeout(function () {beautify.click()}, 300);
+              window.setTimeout(function () {beautifybutton.click()}, 300);
             });
           }
         }
@@ -184,11 +189,11 @@ var config  = {
       "error": {
         "message": function (e) {
           var fileio = document.getElementById("fileio");
-          var beautify = document.getElementById("beautify");
+          var beautifybutton = document.getElementById("beautifybutton");
           /*  */
           fileio.disabled = false;
-          beautify.disabled = false;
-          beautify.value = "Beautify";
+          beautifybutton.disabled = false;
+          beautifybutton.value = "Beautify";
           /*  */
           config.codemirror.editor.output.setValue(JSON.stringify(e, null, 2));
         }
@@ -201,7 +206,7 @@ var config  = {
           fetch("resources/sample.js").then(function (e) {return e.text()}).then(function (e) {
             if (e) {
               config.codemirror.editor.input.setValue(e);
-              window.setTimeout(function () {beautify.click()}, 300);
+              window.setTimeout(function () {beautifybutton.click()}, 300);
             }
           }).catch(function () {
             config.app.show.error.message("Error: could not find the input file!");
@@ -280,9 +285,9 @@ var config  = {
     "start": function () {
       var input = document.getElementById("input");
       var output = document.getElementById("output");
-      var beautify = document.getElementById("beautify");
       var language = document.getElementById("language");
       var settings = document.querySelector(".settings");
+      var beautifybutton = document.getElementById("beautifybutton");
       /*  */
       config.container.inputs = [...settings.querySelectorAll("input")];
       config.beautifier.language = config.storage.read("language") !== undefined ? config.storage.read("language") : "text/javascript";
@@ -295,23 +300,26 @@ var config  = {
       /*  */
       config.container.inputs.map(function (input) {
         if (input.id in config.beautifier.options) {
-          var type = typeof config.beautifier.options[input.id];
-          input[type === "boolean" ? "checked" : "value"] = config.beautifier.options[input.id];
+          var type = input.getAttribute("type");
+          input[type === "checkbox" ? "checked" : "value"] = config.beautifier.options[input.id];
         }
         /*  */
         input.addEventListener("change", function (e) {
           var tmp = config.beautifier.options;
-          var type = typeof config.beautifier.options[e.target.id];
+          var type = e.target.getAttribute("type");
           /*  */
-          tmp[e.target.id] = e.target[type === "boolean" ? "checked" : "value"];
+          tmp[e.target.id] = e.target[type === "checkbox" ? "checked" : "value"];
           config.beautifier.options = tmp;
           /*  */
           config.storage.write("options", config.beautifier.options);
-          beautify.click();
+          beautifybutton.click();
         }, false);
       });
       /*  */
-      config.app.reset.editor();
+      if (config.beautifier.language === "text/javascript") {
+        config.app.reset.editor();
+      }
+      /*  */
       config.app.update.style();
       config.app.update.editor();
     }

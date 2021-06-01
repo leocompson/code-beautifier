@@ -25,7 +25,7 @@
 					<option value="text/html">HTML</option>
 					<option value="text/javascript">JAVASCRIPT</option>
 				</select>
-				<button id="beautify" title="Beautify">Beautify</button>
+				<button id="beautifybutton" title="Beautify">Beautify</button>
 				<button id="download" title="Download">
 					<svg width="12" height="12" viewBox="0 0 16 16">
 						<path d="M 7,15.375 2.54,10 C 2.287,9.695 2,9.461 2,9 2,8.375 2.516,8 3,8 H 6 V 1 C 6,0.45 6.45,0 7,0 H 9 C 9.55,0 10,0.45 10,1 V 8 H 13 C 13.484,8 14,8.375 14,9 14,9.461 13.713,9.695 13.46,10 L 9,15.375 C 8.688,15.758 8.445,16 8,16 7.555,16 7.313,15.758 7,15.375 Z"/>
@@ -51,6 +51,8 @@
 						</g>
 					</svg>
 				</button>
+			</div>
+			<div class="section fixed">
 				<div class="toolbar">
 					<button id="reload" title="Reload UI">
 						<svg height="10" width="10" viewBox="0 0 512 512">
@@ -73,35 +75,35 @@
 				<summary>Settings</summary>
 				<div class="settings">
 					<table>
-						<tr><td><input type="checkbox" id="indent_char"><label for="indent_char">Indent char</label></td></tr>
-						<tr><td><input type="checkbox" id="indent_with_tabs"><label for="indent_with_tabs">Indent with tabs</label></td></tr>
-						<tr><td><input type="checkbox" id="editorconfig"><label for="editorconfig">Editor config</label></td></tr>
-						<tr><td><input type="checkbox" id="end_with_newline"><label for="end_with_newline">End with newline</label></td></tr>
-						<tr><td><input type="checkbox" id="preserve_newlines"><label for="preserve_newlines">Preserve newlines</label></td></tr>
-						<tr><td><input type="checkbox" id="space_in_paren"><label for="space_in_paren">Space in parentheses</label></td></tr>
-						<tr><td><input type="checkbox" id="space_in_empty_paren"><label for="space_in_empty_paren">Space in empty parentheses</label></td></tr>
+						<tr><td><input type="checkbox" id="indent_char"><label for="indent_char">Indent Char</label></td></tr>
+						<tr><td><input type="checkbox" id="indent_with_tabs"><label for="indent_with_tabs">Indent with Tabs</label></td></tr>
+						<tr><td><input type="checkbox" id="editorconfig"><label for="editorconfig">Editor Config</label></td></tr>
+						<tr><td><input type="checkbox" id="end_with_newline"><label for="end_with_newline">End with Newline</label></td></tr>
+						<tr><td><input type="checkbox" id="preserve_newlines"><label for="preserve_newlines">Preserve Newlines</label></td></tr>
+						<tr><td><input type="checkbox" id="space_in_paren"><label for="space_in_paren">Space in Parentheses</label></td></tr>
+						<tr><td><input type="checkbox" id="space_in_empty_paren"><label for="space_in_empty_paren">Space in Empty Parentheses</label></td></tr>
 						<tr><td><input type="checkbox" id="jslint_happy"><label for="jslint_happy">JSLint happy</label></td></tr>
-						<tr><td><input type="checkbox" id="space_after_anon_function"><label for="space_after_anon_function">Space after anonymous function</label></td></tr>
-						<tr><td><input type="checkbox" id="space_after_named_function"><label for="space_after_named_function">Space after named function</label></td></tr>
-						<tr><td><input type="checkbox" id="unindent_chained_methods"><label for="unindent_chained_methods">Unindent chained methods</label></td></tr>
-						<tr><td><input type="checkbox" id="break_chained_methods"><label for="break_chained_methods">Break chained methods</label></td></tr>
-						<tr><td><input type="checkbox" id="keep_array_indentation"><label for="keep_array_indentation">Keep array indentation</label></td></tr>
-						<tr><td><input type="checkbox" id="unescape_strings"><label for="unescape_strings">Unescape strings</label></td></tr>
-						<tr><td><input type="checkbox" id="e4x"><label for="e4x">Support e4x/jsx syntax</label></td></tr>
-						<tr><td><input type="checkbox" id="comma_first"><label for="comma_first">Comma first</label></td></tr>
-						<tr><td><input type="checkbox" id="indent_empty_lines"><label for="indent_empty_lines">Indent empty lines</label></td></tr>
-						<tr><td><input type="checkbox" id="eval_code"><label for="eval_code">Eval code</label></td></tr>
-						<tr><td><input type="checkbox" id="space_before_conditional"><label for="space_before_conditional">Space before conditional</label></td></tr>
+						<tr><td><input type="checkbox" id="space_after_anon_function"><label for="space_after_anon_function">Space After Anonymous Function</label></td></tr>
+						<tr><td><input type="checkbox" id="space_after_named_function"><label for="space_after_named_function">Space After Named Function</label></td></tr>
+						<tr><td><input type="checkbox" id="unindent_chained_methods"><label for="unindent_chained_methods">Unindent Chained Methods</label></td></tr>
+						<tr><td><input type="checkbox" id="break_chained_methods"><label for="break_chained_methods">Break Chained Methods</label></td></tr>
+						<tr><td><input type="checkbox" id="keep_array_indentation"><label for="keep_array_indentation">Keep Array Indentation</label></td></tr>
+						<tr><td><input type="checkbox" id="unescape_strings"><label for="unescape_strings">Unescape Strings</label></td></tr>
+						<tr><td><input type="checkbox" id="e4x"><label for="e4x">Support E4X/JSX Syntax</label></td></tr>
+						<tr><td><input type="checkbox" id="comma_first"><label for="comma_first">Comma First</label></td></tr>
+						<tr><td><input type="checkbox" id="indent_empty_lines"><label for="indent_empty_lines">Indent Empty Lines</label></td></tr>
+						<tr><td><input type="checkbox" id="eval_code"><label for="eval_code">Eval Code</label></td></tr>
+						<tr><td><input type="checkbox" id="space_before_conditional"><label for="space_before_conditional">Space Before Conditional</label></td></tr>
 						<!-- -->
-						<tr><td><input type="number" id="indent_size"><label for="indent_size">Indent size</label></td></tr>
-						<tr><td><input type="number" id="indent_level"><label for="indent_level">Indent level</label></td></tr>
-						<tr><td><input type="number" id="wrap_line_length"><label for="wrap_line_length">Wrap line length</label></td></tr>
-						<tr><td><input type="number" id="max_preserve_newlines"><label for="max_preserve_newlines">Max preserve newlines</label></td></tr>
+						<tr><td><input type="number" id="indent_size"><label for="indent_size">Indent Size</label></td></tr>
+						<tr><td><input type="number" id="indent_level"><label for="indent_level">Indent Level</label></td></tr>
+						<tr><td><input type="number" id="wrap_line_length"><label for="wrap_line_length">Wrap Line Length</label></td></tr>
+						<tr><td><input type="number" id="max_preserve_newlines"><label for="max_preserve_newlines">Max Preserve Newlines</label></td></tr>
 						<!-- -->
-						<tr><td><input type="text" id="eol"><label for="eol">End of line</label></td></tr>
+						<tr><td><input type="text" id="eol"><label for="eol">End of Line</label></td></tr>
 						<tr><td><input type="text" id="templating"><label for="templating">Templating</label></td></tr>
-						<tr><td><input type="text" id="brace_style"><label for="brace_style">Brace style</label></td></tr>
-						<tr><td><input type="text" id="operator_position"><label for="operator_position">Operator position</label></td></tr>
+						<tr><td><input type="text" id="brace_style"><label for="brace_style">Brace Style</label></td></tr>
+						<tr><td><input type="text" id="operator_position"><label for="operator_position">Operator Position</label></td></tr>
 					</table>
 				</div>
 			</details>
