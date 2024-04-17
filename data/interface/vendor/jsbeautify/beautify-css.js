@@ -571,10 +571,10 @@ function Options(options, merge_child_field) {
 
   this.indent_empty_lines = this._get_boolean('indent_empty_lines');
 
-  // valid templating languages ['django', 'erb', 'handlebars', 'php', 'smarty']
-  // For now, 'auto' = all off for javascript, all on for html (and inline javascript).
+  // valid templating languages ['django', 'erb', 'handlebars', 'php', 'smarty', 'angular']
+  // For now, 'auto' = all off for javascript, all except angular on for html (and inline javascript/css).
   // other values ignored
-  this.templating = this._get_selection_list('templating', ['auto', 'none', 'django', 'erb', 'handlebars', 'php', 'smarty'], ['auto']);
+  this.templating = this._get_selection_list('templating', ['auto', 'none', 'angular', 'django', 'erb', 'handlebars', 'php', 'smarty'], ['auto']);
 }
 
 Options.prototype._get_array = function(name, default_value) {
@@ -1003,8 +1003,8 @@ module.exports.Directives = Directives;
 
 
 
-var Beautifier = __webpack_require__(16).Beautifier,
-  Options = __webpack_require__(17).Options;
+var Beautifier = (__webpack_require__(16).Beautifier),
+  Options = (__webpack_require__(17).Options);
 
 function css_beautify(source_text, options) {
   var beautifier = new Beautifier(source_text, options);
@@ -1051,10 +1051,10 @@ module.exports.defaultOptions = function() {
 
 
 
-var Options = __webpack_require__(17).Options;
-var Output = __webpack_require__(2).Output;
-var InputScanner = __webpack_require__(8).InputScanner;
-var Directives = __webpack_require__(13).Directives;
+var Options = (__webpack_require__(17).Options);
+var Output = (__webpack_require__(2).Output);
+var InputScanner = (__webpack_require__(8).InputScanner);
+var Directives = (__webpack_require__(13).Directives);
 
 var directives_core = new Directives(/\/\*/, /\*\//);
 
@@ -1077,19 +1077,23 @@ function Beautifier(source_text, options) {
 
   // https://developer.mozilla.org/en-US/docs/Web/CSS/At-rule
   this.NESTED_AT_RULE = {
-    "@page": true,
-    "@font-face": true,
-    "@keyframes": true,
+    "page": true,
+    "font-face": true,
+    "keyframes": true,
     // also in CONDITIONAL_GROUP_RULE below
-    "@media": true,
-    "@supports": true,
-    "@document": true
+    "media": true,
+    "supports": true,
+    "document": true
   };
   this.CONDITIONAL_GROUP_RULE = {
-    "@media": true,
-    "@supports": true,
-    "@document": true
+    "media": true,
+    "supports": true,
+    "document": true
   };
+  this.NON_SEMICOLON_NEWLINE_PROPERTY = [
+    "grid-template-areas",
+    "grid-template"
+  ];
 
 }
 
@@ -1212,9 +1216,10 @@ Beautifier.prototype.beautify = function() {
   // label { content: blue }
   var insidePropertyValue = false;
   var enteringConditionalGroup = false;
-  var insideAtExtend = false;
-  var insideAtImport = false;
+  var insideNonNestedAtRule = false;
+  var insideScssMap = false;
   var topCharacter = this._ch;
+  var insideNonSemiColonValues = false;
   var whitespace;
   var isAfterSpace;
   var previous_ch;
@@ -1266,10 +1271,30 @@ Beautifier.prototype.beautify = function() {
 
       // Ensures any new lines following the comment are preserved
       this.eatWhitespace(true);
+    } else if (this._ch === '$') {
+      this.preserveSingleSpace(isAfterSpace);
+
+      this.print_string(this._ch);
+
+      // strip trailing space, if present, for hash property checks
+      var variable = this._input.peekUntilAfter(/[: ,;{}()[\]\/='"]/g);
+
+      if (variable.match(/[ :]$/)) {
+        // we have a variable or pseudo-class, add it and insert one space before continuing
+        variable = this.eatString(": ").replace(/\s+$/, '');
+        this.print_string(variable);
+        this._output.space_before_token = true;
+      }
+
+      // might be sass variable
+      if (parenLevel === 0 && variable.indexOf(':') !== -1) {
+        insidePropertyValue = true;
+        this.indent();
+      }
     } else if (this._ch === '@') {
       this.preserveSingleSpace(isAfterSpace);
 
-      // deal with less propery mixins @{...}
+      // deal with less property mixins @{...}
       if (this._input.peek() === '{') {
         this.print_string(this._ch + this.eatString('}'));
       } else {
@@ -1280,29 +1305,26 @@ Beautifier.prototype.beautify = function() {
 
         if (variableOrRule.match(/[ :]$/)) {
           // we have a variable or pseudo-class, add it and insert one space before continuing
-          variableOrRule = this.eatString(": ").replace(/\s$/, '');
+          variableOrRule = this.eatString(": ").replace(/\s+$/, '');
           this.print_string(variableOrRule);
           this._output.space_before_token = true;
         }
 
-        variableOrRule = variableOrRule.replace(/\s$/, '');
+        // might be less variable
+        if (parenLevel === 0 && variableOrRule.indexOf(':') !== -1) {
+          insidePropertyValue = true;
+          this.indent();
 
-        if (variableOrRule === 'extend') {
-          insideAtExtend = true;
-        } else if (variableOrRule === 'import') {
-          insideAtImport = true;
-        }
-
-        // might be a nesting at-rule
-        if (variableOrRule in this.NESTED_AT_RULE) {
+          // might be a nesting at-rule
+        } else if (variableOrRule in this.NESTED_AT_RULE) {
           this._nestedLevel += 1;
           if (variableOrRule in this.CONDITIONAL_GROUP_RULE) {
             enteringConditionalGroup = true;
           }
-          // might be less variable
-        } else if (!insideRule && parenLevel === 0 && variableOrRule.indexOf(':') !== -1) {
-          insidePropertyValue = true;
-          this.indent();
+
+          // might be a non-nested at-rule
+        } else if (parenLevel === 0 && !insidePropertyValue) {
+          insideNonNestedAtRule = true;
         }
       }
     } else if (this._ch === '#' && this._input.peek() === '{') {
@@ -1313,6 +1335,9 @@ Beautifier.prototype.beautify = function() {
         insidePropertyValue = false;
         this.outdent();
       }
+
+      // non nested at rule becomes nested
+      insideNonNestedAtRule = false;
 
       // when entering conditional groups, only rulesets are allowed
       if (enteringConditionalGroup) {
@@ -1337,7 +1362,12 @@ Beautifier.prototype.beautify = function() {
         this.indent();
         this._output.set_indent(this._indentLevel);
       } else {
-        this.indent();
+        // inside mixin and first param is object
+        if (previous_ch === '(') {
+          this._output.space_before_token = false;
+        } else if (previous_ch !== ',') {
+          this.indent();
+        }
         this.print_string(this._ch);
       }
 
@@ -1349,8 +1379,7 @@ Beautifier.prototype.beautify = function() {
       if (previous_ch === '{') {
         this._output.trim(true);
       }
-      insideAtImport = false;
-      insideAtExtend = false;
+
       if (insidePropertyValue) {
         this.outdent();
         insidePropertyValue = false;
@@ -1369,10 +1398,25 @@ Beautifier.prototype.beautify = function() {
           this._output.add_new_line(true);
         }
       }
+      if (this._input.peek() === ')') {
+        this._output.trim(true);
+        if (this._options.brace_style === "expand") {
+          this._output.add_new_line(true);
+        }
+      }
     } else if (this._ch === ":") {
-      if ((insideRule || enteringConditionalGroup) && !(this._input.lookBack("&") || this.foundNestedPseudoClass()) && !this._input.lookBack("(") && !insideAtExtend && parenLevel === 0) {
+
+      for (var i = 0; i < this.NON_SEMICOLON_NEWLINE_PROPERTY.length; i++) {
+        if (this._input.lookBack(this.NON_SEMICOLON_NEWLINE_PROPERTY[i])) {
+          insideNonSemiColonValues = true;
+          break;
+        }
+      }
+
+      if ((insideRule || enteringConditionalGroup) && !(this._input.lookBack("&") || this.foundNestedPseudoClass()) && !this._input.lookBack("(") && !insideNonNestedAtRule && parenLevel === 0) {
         // 'property: value' delimiter
         // which could be in a conditional group query
+
         this.print_string(':');
         if (!insidePropertyValue) {
           insidePropertyValue = true;
@@ -1398,17 +1442,18 @@ Beautifier.prototype.beautify = function() {
         }
       }
     } else if (this._ch === '"' || this._ch === '\'') {
-      this.preserveSingleSpace(isAfterSpace);
+      var preserveQuoteSpace = previous_ch === '"' || previous_ch === '\'';
+      this.preserveSingleSpace(preserveQuoteSpace || isAfterSpace);
       this.print_string(this._ch + this.eatString(this._ch));
       this.eatWhitespace(true);
     } else if (this._ch === ';') {
+      insideNonSemiColonValues = false;
       if (parenLevel === 0) {
         if (insidePropertyValue) {
           this.outdent();
           insidePropertyValue = false;
         }
-        insideAtExtend = false;
-        insideAtImport = false;
+        insideNonNestedAtRule = false;
         this.print_string(this._ch);
         this.eatWhitespace(true);
 
@@ -1441,22 +1486,39 @@ Beautifier.prototype.beautify = function() {
           }
         }
       } else {
-        this.preserveSingleSpace(isAfterSpace);
+        var space_needed = false;
+        if (this._input.lookBack("with")) {
+          // look back is not an accurate solution, we need tokens to confirm without whitespaces
+          space_needed = true;
+        }
+        this.preserveSingleSpace(isAfterSpace || space_needed);
         this.print_string(this._ch);
-        this.eatWhitespace();
-        parenLevel++;
-        this.indent();
+
+        // handle scss/sass map
+        if (insidePropertyValue && previous_ch === "$" && this._options.selector_separator_newline) {
+          this._output.add_new_line();
+          insideScssMap = true;
+        } else {
+          this.eatWhitespace();
+          parenLevel++;
+          this.indent();
+        }
       }
     } else if (this._ch === ')') {
       if (parenLevel) {
         parenLevel--;
         this.outdent();
       }
+      if (insideScssMap && this._input.peek() === ";" && this._options.selector_separator_newline) {
+        insideScssMap = false;
+        this.outdent();
+        this._output.add_new_line();
+      }
       this.print_string(this._ch);
     } else if (this._ch === ',') {
       this.print_string(this._ch);
       this.eatWhitespace(true);
-      if (this._options.selector_separator_newline && !insidePropertyValue && parenLevel === 0 && !insideAtImport) {
+      if (this._options.selector_separator_newline && (!insidePropertyValue || insideScssMap) && parenLevel === 0 && !insideNonNestedAtRule) {
         this._output.add_new_line();
       } else {
         this._output.space_before_token = true;
@@ -1487,11 +1549,16 @@ Beautifier.prototype.beautify = function() {
         this._ch = '';
       }
     } else if (this._ch === '!' && !this._input.lookBack("\\")) { // !important
-      this.print_string(' ');
+      this._output.space_before_token = true;
       this.print_string(this._ch);
     } else {
-      this.preserveSingleSpace(isAfterSpace);
+      var preserveAfterSpace = previous_ch === '"' || previous_ch === '\'';
+      this.preserveSingleSpace(preserveAfterSpace || isAfterSpace);
       this.print_string(this._ch);
+
+      if (!this._output.just_added_newline() && this._input.peek() === '\n' && insideNonSemiColonValues) {
+        this._output.add_new_line();
+      }
     }
   }
 
@@ -1537,7 +1604,7 @@ module.exports.Beautifier = Beautifier;
 
 
 
-var BaseOptions = __webpack_require__(6).Options;
+var BaseOptions = (__webpack_require__(6).Options);
 
 function Options(options) {
   BaseOptions.call(this, options, 'css');

@@ -55,15 +55,41 @@ var config  = {
   "resize": {
     "timeout": null,
     "method": function () {
-      config.app.update.style();
+      if (config.port.name === "win") {
+        if (config.resize.timeout) window.clearTimeout(config.resize.timeout);
+        config.resize.timeout = window.setTimeout(async function () {
+          const current = await chrome.windows.getCurrent();
+          /*  */
+          config.storage.write("interface.size", {
+            "top": current.top,
+            "left": current.left,
+            "width": current.width,
+            "height": current.height
+          });
+        }, 1000);
+      }
+    }
+  },
+  "port": {
+    "name": '',
+    "connect": function () {
+      config.port.name = "webapp";
+      const context = document.documentElement.getAttribute("context");
       /*  */
-      if (config.resize.timeout) window.clearTimeout(config.resize.timeout);
-      config.resize.timeout = window.setTimeout(function () {
-        config.storage.write("size", {
-          "width": window.innerWidth || window.outerWidth,
-          "height": window.innerHeight || window.outerHeight
-        });
-      }, 1000);
+      if (chrome.runtime) {
+        if (chrome.runtime.connect) {
+          if (context !== config.port.name) {
+            if (document.location.search === "?tab") config.port.name = "tab";
+            if (document.location.search === "?win") config.port.name = "win";
+            /*  */
+            chrome.runtime.connect({
+              "name": config.port.name
+            });
+          }
+        }
+      }
+      /*  */
+      document.documentElement.setAttribute("context", config.port.name);
     }
   },
   "storage": {
@@ -80,7 +106,7 @@ var config  = {
     "write": function (id, data) {
       if (id) {
         if (data !== '' && data !== null && data !== undefined) {
-          var tmp = {};
+          let tmp = {};
           tmp[id] = data;
           config.storage.local[id] = data;
           chrome.storage.local.set(tmp, function () {});
@@ -92,29 +118,29 @@ var config  = {
     }
   },
   "load": function () {
-    var clear = document.getElementById("clear");
-    var select = document.getElementById("select");
-    var fileio = document.getElementById("fileio");
-    var reload = document.getElementById("reload");
-    var support = document.getElementById("support");
-    var language = document.getElementById("language");
-    var donation = document.getElementById("donation");
-    var download = document.getElementById("download");
-    var clipboard = document.getElementById("clipboard");
-    var file = document.querySelector("input[type='file']");
-    var beautifybutton = document.getElementById("beautifybutton");
+    const clear = document.getElementById("clear");
+    const select = document.getElementById("select");
+    const fileio = document.getElementById("fileio");
+    const reload = document.getElementById("reload");
+    const support = document.getElementById("support");
+    const language = document.getElementById("language");
+    const donation = document.getElementById("donation");
+    const download = document.getElementById("download");
+    const clipboard = document.getElementById("clipboard");
+    const file = document.querySelector("input[type='file']");
+    const beautifybutton = document.getElementById("beautifybutton");
     /*  */
     fileio.addEventListener("click", function () {file.click()}, false);
     download.addEventListener("click", config.app.download.result, false);
     reload.addEventListener("click", function () {document.location.reload()}, false);
     /*  */
     support.addEventListener("click", function () {
-      var url = config.addon.homepage();
+      const url = config.addon.homepage();
       chrome.tabs.create({"url": url, "active": true});
     }, false);
     /*  */
     donation.addEventListener("click", function () {
-      var url = config.addon.homepage() + "?reason=support";
+      const url = config.addon.homepage() + "?reason=support";
       chrome.tabs.create({"url": url, "active": true});
     }, false);
     /*  */
@@ -139,12 +165,12 @@ var config  = {
     /*  */
     beautifybutton.addEventListener("click", function () {
       try {
-        var txt = config.codemirror.editor.input.getValue();
+        const txt = config.codemirror.editor.input.getValue();
         if (txt) {
-          var tmp = config.beautifier.language.replace("text/", '');
+          const tmp = config.beautifier.language.replace("text/", '');
           config.app.engine = tmp === "javascript" ? js_beautify : (tmp === "css" ? css_beautify : html_beautify);
           /*  */
-          var result = config.app.engine(txt, config.beautifier.options);
+          const result = config.app.engine(txt, config.beautifier.options);
           if (result) {
             config.codemirror.editor.output.setValue(result);
           }
@@ -156,7 +182,7 @@ var config  = {
     /*  */
     clipboard.addEventListener("click", function () {
       if (config.codemirror.editor.output) {
-        var textarea = document.createElement("textarea");
+        const textarea = document.createElement("textarea");
         /*  */
         select.click();
         document.body.appendChild(textarea);
@@ -188,8 +214,8 @@ var config  = {
     "show": {
       "error": {
         "message": function (e) {
-          var fileio = document.getElementById("fileio");
-          var beautifybutton = document.getElementById("beautifybutton");
+          const fileio = document.getElementById("fileio");
+          const beautifybutton = document.getElementById("beautifybutton");
           /*  */
           fileio.disabled = false;
           beautifybutton.disabled = false;
@@ -201,7 +227,7 @@ var config  = {
     },
     "reset": {
       "editor": function () {
-        var reset = config.storage.read("reset") !== undefined ? config.storage.read("reset") : true;
+        const reset = config.storage.read("reset") !== undefined ? config.storage.read("reset") : true;
         if (reset) {
           fetch("resources/sample.js").then(function (e) {return e.text()}).then(function (e) {
             if (e) {
@@ -216,11 +242,11 @@ var config  = {
     },
     "download": {
       "result": function () {
-        var txt = config.codemirror.editor.output.getValue();
+        const txt = config.codemirror.editor.output.getValue();
         if (txt) {
-          var a = document.createElement('a');
-          var tmp = config.beautifier.language.replace("text/", '');
-          var filename = config.app.file.name ? "beautified-" + config.app.file.name : "result." + (tmp === "javascript" ? "js" : tmp);
+          const a = document.createElement('a');
+          const tmp = config.beautifier.language.replace("text/", '');
+          const filename = config.app.file.name ? "beautified-" + config.app.file.name : "result." + (tmp === "javascript" ? "js" : tmp);
           /*  */
           a.style.display = "none";  
           a.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(txt));
@@ -237,19 +263,19 @@ var config  = {
       "process": function (file, callback) {
         if (!file) return;
         /*  */
-        var type = file.type; 
+        const type = file.type; 
         config.app.file.name = file.name;
-        var language = document.getElementById("language");
+        const language = document.getElementById("language");
         /*  */
         if (type === "text/css" || type === "text/html" || type === "text/javascript") {
           language.value = type;
           language.dispatchEvent(new Event("change"));
         }
         /*  */
-        var reader = new FileReader();
+        const reader = new FileReader();
         reader.readAsText(file);
         reader.onload = function (e) {
-          var content = e.target.result;
+          const content = e.target.result;
           if (content) callback(content);
         };
       }
@@ -260,7 +286,7 @@ var config  = {
         config.container.header = document.querySelector(".header");
         config.container.output = document.querySelector(".output");
         /*  */
-        var offset = parseInt(window.getComputedStyle(config.container.header).height);
+        const offset = parseInt(window.getComputedStyle(config.container.header).height);
         config.container.input.style.height = window.innerWidth < 700 ? "calc(50vh - " + (offset / 2 + 15) + "px)" : "calc(100vh - " + (offset + 15) + "px)";
         config.container.output.style.height = window.innerWidth < 700 ? "calc(50vh - " + (offset / 2 + 15) + "px)" : "calc(100vh - " + (offset + 15) + "px)";
       },
@@ -283,11 +309,11 @@ var config  = {
       }
     },
     "start": function () {
-      var input = document.getElementById("input");
-      var output = document.getElementById("output");
-      var language = document.getElementById("language");
-      var settings = document.querySelector(".settings");
-      var beautifybutton = document.getElementById("beautifybutton");
+      const input = document.getElementById("input");
+      const output = document.getElementById("output");
+      const language = document.getElementById("language");
+      const settings = document.querySelector(".settings");
+      const beautifybutton = document.getElementById("beautifybutton");
       /*  */
       config.container.inputs = [...settings.querySelectorAll("input")];
       config.beautifier.language = config.storage.read("language") !== undefined ? config.storage.read("language") : "text/javascript";
@@ -300,13 +326,13 @@ var config  = {
       /*  */
       config.container.inputs.map(function (input) {
         if (input.id in config.beautifier.options) {
-          var type = input.getAttribute("type");
+          const type = input.getAttribute("type");
           input[type === "checkbox" ? "checked" : "value"] = config.beautifier.options[input.id];
         }
         /*  */
         input.addEventListener("change", function (e) {
-          var tmp = config.beautifier.options;
-          var type = e.target.getAttribute("type");
+          const tmp = config.beautifier.options;
+          const type = e.target.getAttribute("type");
           /*  */
           tmp[e.target.id] = e.target[type === "checkbox" ? "checked" : "value"];
           config.beautifier.options = tmp;
@@ -325,6 +351,8 @@ var config  = {
     }
   }
 };
+
+config.port.connect();
 
 window.addEventListener("load", config.load, false);
 window.addEventListener("resize", config.resize.method, false);

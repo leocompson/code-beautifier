@@ -59,7 +59,7 @@
             }                   }
 
     space_after_anon_function (default false) - should the space before an anonymous function's parens be added, "function()" vs "function ()",
-          NOTE: This option is overriden by jslint_happy (i.e. if jslint_happy is true, space_after_anon_function is true by design)
+          NOTE: This option is overridden by jslint_happy (i.e. if jslint_happy is true, space_after_anon_function is true by design)
 
     brace_style (default "collapse") - "collapse" | "expand" | "end-expand" | "none" | any of the former + ",preserve-inline"
             put braces on the same line as control statements (default), or put braces on own line (Allman / ANSI style), or just put end braces on own line, or attempt to keep them where they are.
@@ -125,8 +125,8 @@ var legacy_beautify_js;
 
 
 
-var Beautifier = __webpack_require__(1).Beautifier,
-  Options = __webpack_require__(5).Options;
+var Beautifier = (__webpack_require__(1).Beautifier),
+  Options = (__webpack_require__(5).Options);
 
 function js_beautify(js_source_text, options) {
   var beautifier = new Beautifier(js_source_text, options);
@@ -173,14 +173,14 @@ module.exports.defaultOptions = function() {
 
 
 
-var Output = __webpack_require__(2).Output;
-var Token = __webpack_require__(3).Token;
+var Output = (__webpack_require__(2).Output);
+var Token = (__webpack_require__(3).Token);
 var acorn = __webpack_require__(4);
-var Options = __webpack_require__(5).Options;
-var Tokenizer = __webpack_require__(7).Tokenizer;
-var line_starters = __webpack_require__(7).line_starters;
-var positionable_operators = __webpack_require__(7).positionable_operators;
-var TOKEN = __webpack_require__(7).TOKEN;
+var Options = (__webpack_require__(5).Options);
+var Tokenizer = (__webpack_require__(7).Tokenizer);
+var line_starters = (__webpack_require__(7).line_starters);
+var positionable_operators = (__webpack_require__(7).positionable_operators);
+var TOKEN = (__webpack_require__(7).TOKEN);
 
 
 function in_array(what, arr) {
@@ -330,12 +330,14 @@ Beautifier.prototype.create_flags = function(flags_base, mode) {
     inline_frame: false,
     if_block: false,
     else_block: false,
+    class_start_block: false, // class A { INSIDE HERE } or class B extends C { INSIDE HERE }
     do_block: false,
     do_while: false,
     import_block: false,
     in_case_statement: false, // switch(..){ INSIDE HERE }
     in_case: false, // we're on the exact line with "case 0:"
     case_body: false, // the indented case-action block
+    case_block: false, // the indented case-action block is wrapped with {}
     indentation_level: next_indent_level,
     alignment: 0,
     line_indent_level: flags_base ? flags_base.line_indent_level : next_indent_level,
@@ -741,6 +743,8 @@ Beautifier.prototype.handle_start_expr = function(current_token) {
             (peek_back_two.text === '*' && (peek_back_three.text === '{' || peek_back_three.text === ','))) {
             this._output.space_before_token = true;
           }
+        } else if (this._flags.parent && this._flags.parent.class_start_block) {
+          this._output.space_before_token = true;
         }
       }
     } else {
@@ -835,10 +839,10 @@ Beautifier.prototype.handle_start_block = function(current_token) {
     )) {
     // We don't support TypeScript,but we didn't break it for a very long time.
     // We'll try to keep not breaking it.
-    if (!in_array(this._last_last_text, ['class', 'interface'])) {
-      this.set_mode(MODE.ObjectLiteral);
-    } else {
+    if (in_array(this._last_last_text, ['class', 'interface']) && !in_array(second_token.text, [':', ','])) {
       this.set_mode(MODE.BlockStatement);
+    } else {
+      this.set_mode(MODE.ObjectLiteral);
     }
   } else if (this._flags.last_token.type === TOKEN.OPERATOR && this._flags.last_token.text === '=>') {
     // arrow function: (param1, paramN) => { statements }
@@ -853,6 +857,12 @@ Beautifier.prototype.handle_start_block = function(current_token) {
     this.set_mode(MODE.ObjectLiteral);
   } else {
     this.set_mode(MODE.BlockStatement);
+  }
+
+  if (this._flags.last_token) {
+    if (reserved_array(this._flags.last_token.previous, ['class', 'extends'])) {
+      this._flags.class_start_block = true;
+    }
   }
 
   var empty_braces = !next_token.comments_before && next_token.text === '}';
@@ -900,7 +910,7 @@ Beautifier.prototype.handle_start_block = function(current_token) {
       }
     }
     if (this._flags.last_token.type !== TOKEN.OPERATOR && this._flags.last_token.type !== TOKEN.START_EXPR) {
-      if (this._flags.last_token.type === TOKEN.START_BLOCK && !this._flags.inline_frame) {
+      if (in_array(this._flags.last_token.type, [TOKEN.START_BLOCK, TOKEN.SEMICOLON]) && !this._flags.inline_frame) {
         this.print_newline();
       } else {
         this._output.space_before_token = true;
@@ -954,7 +964,7 @@ Beautifier.prototype.handle_word = function(current_token) {
   if (current_token.type === TOKEN.RESERVED) {
     if (in_array(current_token.text, ['set', 'get']) && this._flags.mode !== MODE.ObjectLiteral) {
       current_token.type = TOKEN.WORD;
-    } else if (current_token.text === 'import' && this._tokens.peek().text === '(') {
+    } else if (current_token.text === 'import' && in_array(this._tokens.peek().text, ['(', '.'])) {
       current_token.type = TOKEN.WORD;
     } else if (in_array(current_token.text, ['as', 'from']) && !this._flags.import_block) {
       current_token.type = TOKEN.WORD;
@@ -1014,7 +1024,7 @@ Beautifier.prototype.handle_word = function(current_token) {
 
   if (this._flags.in_case_statement && reserved_array(current_token, ['case', 'default'])) {
     this.print_newline();
-    if (this._flags.last_token.type !== TOKEN.END_BLOCK && (this._flags.case_body || this._options.jslint_happy)) {
+    if (!this._flags.case_block && (this._flags.case_body || this._options.jslint_happy)) {
       // switch cases following one another
       this.deindent();
     }
@@ -1026,7 +1036,9 @@ Beautifier.prototype.handle_word = function(current_token) {
   }
 
   if (this._flags.last_token.type === TOKEN.COMMA || this._flags.last_token.type === TOKEN.START_EXPR || this._flags.last_token.type === TOKEN.EQUALS || this._flags.last_token.type === TOKEN.OPERATOR) {
-    if (!this.start_of_object_property()) {
+    if (!this.start_of_object_property() && !(
+        // start of object property is different for numeric values with +/- prefix operators
+        in_array(this._flags.last_token.text, ['+', '-']) && this._last_last_text === ':' && this._flags.parent.mode === MODE.ObjectLiteral)) {
       this.allow_wrap_or_preserved_newline(current_token);
     }
   }
@@ -1295,13 +1307,6 @@ Beautifier.prototype.handle_operator = function(current_token) {
     this.handle_whitespace_and_comments(current_token, preserve_statement_flags);
   }
 
-  if (reserved_array(this._flags.last_token, special_words)) {
-    // "return" had a special handling in TK_WORD. Now we need to return the favor
-    this._output.space_before_token = true;
-    this.print_token(current_token);
-    return;
-  }
-
   // hack for actionscript's import .*;
   if (current_token.text === '*' && this._flags.last_token.type === TOKEN.DOT) {
     this.print_token(current_token);
@@ -1310,6 +1315,12 @@ Beautifier.prototype.handle_operator = function(current_token) {
 
   if (current_token.text === '::') {
     // no spaces around exotic namespacing syntax operator
+    this.print_token(current_token);
+    return;
+  }
+
+  if (in_array(current_token.text, ['-', '+']) && this.start_of_object_property()) {
+    // numeric value with +/- symbol in front as a property
     this.print_token(current_token);
     return;
   }
@@ -1328,7 +1339,9 @@ Beautifier.prototype.handle_operator = function(current_token) {
     if (this._tokens.peek().type !== TOKEN.START_BLOCK) {
       this.indent();
       this.print_newline();
+      this._flags.case_block = false;
     } else {
+      this._flags.case_block = true;
       this._output.space_before_token = true;
     }
     return;
@@ -1426,8 +1439,12 @@ Beautifier.prototype.handle_operator = function(current_token) {
 
     // http://www.ecma-international.org/ecma-262/5.1/#sec-7.9.1
     // if there is a newline between -- or ++ and anything else we should preserve it.
-    if (current_token.newlines && (current_token.text === '--' || current_token.text === '++')) {
-      this.print_newline(false, true);
+    if (current_token.newlines && (current_token.text === '--' || current_token.text === '++' || current_token.text === '~')) {
+      var new_line_needed = reserved_array(this._flags.last_token, special_words) && current_token.newlines;
+      if (new_line_needed && (this._previous_flags.if_block || this._previous_flags.else_block)) {
+        this.restore_mode();
+      }
+      this.print_newline(new_line_needed, true);
     }
 
     if (this._flags.last_token.text === ';' && is_expression(this._flags.mode)) {
@@ -1565,6 +1582,10 @@ Beautifier.prototype.handle_dot = function(current_token) {
     // The conditional starts the statement if appropriate.
   } else {
     this.handle_whitespace_and_comments(current_token, true);
+  }
+
+  if (this._flags.last_token.text.match('^[0-9]+$')) {
+    this._output.space_before_token = true;
   }
 
   if (reserved_array(this._flags.last_token, special_words)) {
@@ -2130,12 +2151,13 @@ var nonASCIIidentifierChars = "\\u0300-\\u036f\\u0483-\\u0487\\u0591-\\u05bd\\u0
 //var nonASCIIidentifierStart = new RegExp("[" + nonASCIIidentifierStartChars + "]");
 //var nonASCIIidentifier = new RegExp("[" + nonASCIIidentifierStartChars + nonASCIIidentifierChars + "]");
 
-var identifierStart = "(?:\\\\u[0-9a-fA-F]{4}|[" + baseASCIIidentifierStartChars + nonASCIIidentifierStartChars + "])";
-var identifierChars = "(?:\\\\u[0-9a-fA-F]{4}|[" + baseASCIIidentifierChars + nonASCIIidentifierStartChars + nonASCIIidentifierChars + "])*";
+var unicodeEscapeOrCodePoint = "\\\\u[0-9a-fA-F]{4}|\\\\u\\{[0-9a-fA-F]+\\}";
+var identifierStart = "(?:" + unicodeEscapeOrCodePoint + "|[" + baseASCIIidentifierStartChars + nonASCIIidentifierStartChars + "])";
+var identifierChars = "(?:" + unicodeEscapeOrCodePoint + "|[" + baseASCIIidentifierChars + nonASCIIidentifierStartChars + nonASCIIidentifierChars + "])*";
 
 exports.identifier = new RegExp(identifierStart + identifierChars, 'g');
 exports.identifierStart = new RegExp(identifierStart);
-exports.identifierMatch = new RegExp("(?:\\\\u[0-9a-fA-F]{4}|[" + baseASCIIidentifierChars + nonASCIIidentifierStartChars + nonASCIIidentifierChars + "])+");
+exports.identifierMatch = new RegExp("(?:" + unicodeEscapeOrCodePoint + "|[" + baseASCIIidentifierChars + nonASCIIidentifierStartChars + nonASCIIidentifierChars + "])+");
 
 var nonASCIIwhitespace = /[\u1680\u180e\u2000-\u200a\u202f\u205f\u3000\ufeff]/; // jshint ignore:line
 
@@ -2186,7 +2208,7 @@ exports.allLineBreaks = new RegExp(exports.lineBreak.source, 'g');
 
 
 
-var BaseOptions = __webpack_require__(6).Options;
+var BaseOptions = (__webpack_require__(6).Options);
 
 var validPositionValues = ['before-newline', 'after-newline', 'preserve-newline'];
 
@@ -2324,10 +2346,10 @@ function Options(options, merge_child_field) {
 
   this.indent_empty_lines = this._get_boolean('indent_empty_lines');
 
-  // valid templating languages ['django', 'erb', 'handlebars', 'php', 'smarty']
-  // For now, 'auto' = all off for javascript, all on for html (and inline javascript).
+  // valid templating languages ['django', 'erb', 'handlebars', 'php', 'smarty', 'angular']
+  // For now, 'auto' = all off for javascript, all except angular on for html (and inline javascript/css).
   // other values ignored
-  this.templating = this._get_selection_list('templating', ['auto', 'none', 'django', 'erb', 'handlebars', 'php', 'smarty'], ['auto']);
+  this.templating = this._get_selection_list('templating', ['auto', 'none', 'angular', 'django', 'erb', 'handlebars', 'php', 'smarty'], ['auto']);
 }
 
 Options.prototype._get_array = function(name, default_value) {
@@ -2484,13 +2506,13 @@ module.exports.mergeOpts = _mergeOpts;
 
 
 
-var InputScanner = __webpack_require__(8).InputScanner;
-var BaseTokenizer = __webpack_require__(9).Tokenizer;
-var BASETOKEN = __webpack_require__(9).TOKEN;
-var Directives = __webpack_require__(13).Directives;
+var InputScanner = (__webpack_require__(8).InputScanner);
+var BaseTokenizer = (__webpack_require__(9).Tokenizer);
+var BASETOKEN = (__webpack_require__(9).TOKEN);
+var Directives = (__webpack_require__(13).Directives);
 var acorn = __webpack_require__(4);
-var Pattern = __webpack_require__(12).Pattern;
-var TemplatablePattern = __webpack_require__(14).TemplatablePattern;
+var Pattern = (__webpack_require__(12).Pattern);
+var TemplatablePattern = (__webpack_require__(14).TemplatablePattern);
 
 
 function in_array(what, arr) {
@@ -2522,7 +2544,7 @@ var TOKEN = {
 
 var directives_core = new Directives(/\/\*/, /\*\//);
 
-var number_pattern = /0[xX][0123456789abcdefABCDEF]*|0[oO][01234567]*|0[bB][01]*|\d+n|(?:\.\d+|\d+\.?\d*)(?:[eE][+-]?\d+)?/;
+var number_pattern = /0[xX][0123456789abcdefABCDEF_]*n?|0[oO][01234567_]*n?|0[bB][01_]*n?|\d[\d_]*n|(?:\.\d[\d_]*|\d[\d_]*\.?[\d_]*)(?:[eE][+-]?[\d_]+)?/;
 
 var digit = /[0-9]/;
 
@@ -2530,7 +2552,7 @@ var digit = /[0-9]/;
 var dot_pattern = /[^\d\.]/;
 
 var positionable_operators = (
-  ">>> === !== " +
+  ">>> === !== &&= ??= ||= " +
   "<< && >= ** != == <= >> || ?? |> " +
   "< / - + > : & % ? ^ | *").split(' ');
 
@@ -2538,7 +2560,7 @@ var positionable_operators = (
 // Also, you must update possitionable operators separately from punct
 var punct =
   ">>>= " +
-  "... >>= <<= === >>> !== **= " +
+  "... >>= <<= === >>> !== **= &&= ??= ||= " +
   "=> ^= :: /= << <= == && -= >= >> != -- += ** || ?? ++ %= &= *= |= |> " +
   "= ! ? > < : / ^ - + * & % ~ |";
 
@@ -2551,7 +2573,7 @@ var punct_pattern = new RegExp(punct);
 
 // words which should always start on new line.
 var line_starters = 'continue,try,throw,return,var,let,const,if,switch,case,default,for,while,break,function,import,export'.split(',');
-var reserved_words = line_starters.concat(['do', 'in', 'of', 'else', 'get', 'set', 'new', 'catch', 'finally', 'typeof', 'yield', 'async', 'await', 'from', 'as']);
+var reserved_words = line_starters.concat(['do', 'in', 'of', 'else', 'get', 'set', 'new', 'catch', 'finally', 'typeof', 'yield', 'async', 'await', 'from', 'as', 'class', 'extends']);
 var reserved_word_pattern = new RegExp('^(?:' + reserved_words.join('|') + ')$');
 
 // var template_pattern = /(?:(?:<\?php|<\?=)[\s\S]*?\?>)|(?:<%[\s\S]*?%>)/g;
@@ -2582,7 +2604,7 @@ var Tokenizer = function(input_string, options) {
     html_comment_end: pattern_reader.matching(/-->/),
     include: pattern_reader.starting_with(/#include/).until_after(acorn.lineBreak),
     shebang: pattern_reader.starting_with(/#!/).until_after(acorn.lineBreak),
-    xml: pattern_reader.matching(/[\s\S]*?<(\/?)([-a-zA-Z:0-9_.]+|{[\s\S]+?}|!\[CDATA\[[\s\S]*?\]\]|)(\s+{[\s\S]+?}|\s+[-a-zA-Z:0-9_.]+|\s+[-a-zA-Z:0-9_.]+\s*=\s*('[^']*'|"[^"]*"|{[\s\S]+?}))*\s*(\/?)\s*>/),
+    xml: pattern_reader.matching(/[\s\S]*?<(\/?)([-a-zA-Z:0-9_.]+|{[^}]+?}|!\[CDATA\[[^\]]*?\]\]|)(\s*{[^}]+?}|\s+[-a-zA-Z:0-9_.]+|\s+[-a-zA-Z:0-9_.]+\s*=\s*('[^']*'|"[^"]*"|{([^{}]|{[^}]+?})+?}))*\s*(\/?)\s*>/),
     single_quote: templatable.until(/['\\\n\r\u2028\u2029]/),
     double_quote: templatable.until(/["\\\n\r\u2028\u2029]/),
     template_text: templatable.until(/[`\\$]/),
@@ -2623,6 +2645,7 @@ Tokenizer.prototype._get_next_token = function(previous_token, open_token) { // 
 
   token = token || this._read_non_javascript(c);
   token = token || this._read_string(c);
+  token = token || this._read_pair(c, this._input.peek(1)); // Issue #2062 hack for record type '#{'
   token = token || this._read_word(previous_token);
   token = token || this._read_singles(c);
   token = token || this._read_comment(c);
@@ -2642,7 +2665,8 @@ Tokenizer.prototype._read_word = function(previous_token) {
     if (!(previous_token.type === TOKEN.DOT ||
         (previous_token.type === TOKEN.RESERVED && (previous_token.text === 'set' || previous_token.text === 'get'))) &&
       reserved_word_pattern.test(resulting_string)) {
-      if (resulting_string === 'in' || resulting_string === 'of') { // hack for 'in' and 'of' operators
+      if ((resulting_string === 'in' || resulting_string === 'of') &&
+        (previous_token.type === TOKEN.WORD || previous_token.type === TOKEN.STRING)) { // hack for 'in' and 'of' operators
         return this._create_token(TOKEN.OPERATOR, resulting_string);
       }
       return this._create_token(TOKEN.RESERVED, resulting_string);
@@ -2675,6 +2699,19 @@ Tokenizer.prototype._read_singles = function(c) {
   }
 
   if (token) {
+    this._input.next();
+  }
+  return token;
+};
+
+Tokenizer.prototype._read_pair = function(c, d) {
+  var token = null;
+  if (c === '#' && d === '{') {
+    token = this._create_token(TOKEN.START_BLOCK, c + d);
+  }
+
+  if (token) {
+    this._input.next();
     this._input.next();
   }
   return token;
@@ -2925,6 +2962,9 @@ function unescape_string(s) {
         matched = input_scan.match(/x([0-9A-Fa-f]{2})/g);
       } else if (input_scan.peek() === 'u') {
         matched = input_scan.match(/u([0-9A-Fa-f]{4})/g);
+        if (!matched) {
+          matched = input_scan.match(/u\{([0-9A-Fa-f]+)\}/g);
+        }
       } else {
         out += '\\';
         if (input_scan.hasNext()) {
@@ -2948,7 +2988,9 @@ function unescape_string(s) {
       } else if (escaped >= 0x00 && escaped < 0x20) {
         // leave 0x00...0x1f escaped
         out += '\\' + matched[0];
-        continue;
+      } else if (escaped > 0x10FFFF) {
+        // If the escape sequence is out of bounds, keep the original sequence and continue conversion
+        out += '\\' + matched[0];
       } else if (escaped === 0x22 || escaped === 0x27 || escaped === 0x5c) {
         // single-quote, apostrophe, backslash - escape these
         out += '\\' + String.fromCharCode(escaped);
@@ -3254,10 +3296,10 @@ module.exports.InputScanner = InputScanner;
 
 
 
-var InputScanner = __webpack_require__(8).InputScanner;
-var Token = __webpack_require__(3).Token;
-var TokenStream = __webpack_require__(10).TokenStream;
-var WhitespacePattern = __webpack_require__(11).WhitespacePattern;
+var InputScanner = (__webpack_require__(8).InputScanner);
+var Token = (__webpack_require__(3).Token);
+var TokenStream = (__webpack_require__(10).TokenStream);
+var WhitespacePattern = (__webpack_require__(11).WhitespacePattern);
 
 var TOKEN = {
   START: 'TK_START',
@@ -3484,7 +3526,7 @@ module.exports.TokenStream = TokenStream;
 
 
 
-var Pattern = __webpack_require__(12).Pattern;
+var Pattern = (__webpack_require__(12).Pattern);
 
 function WhitespacePattern(input_scanner, parent) {
   Pattern.call(this, input_scanner, parent);
@@ -3763,7 +3805,7 @@ module.exports.Directives = Directives;
 
 
 
-var Pattern = __webpack_require__(12).Pattern;
+var Pattern = (__webpack_require__(12).Pattern);
 
 
 var template_names = {
@@ -3771,7 +3813,8 @@ var template_names = {
   erb: false,
   handlebars: false,
   php: false,
-  smarty: false
+  smarty: false,
+  angular: false
 };
 
 // This lets templates appear anywhere we would do a readUntil
