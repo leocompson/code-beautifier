@@ -130,8 +130,8 @@ summary:focus {
 }
 
 .settings {
+  margin: 5px;
   height: 250px;
-  margin: 0 5px;
   padding: 5px 0;
   max-height: 250px;
   overflow-y: scroll;
@@ -160,6 +160,7 @@ summary:focus {
   outline: none;
   color: #0075ff;
   font-size: 13px;
+  margin-left: 10px;
   font-family: monospace;
   vertical-align: middle;
   box-sizing: border-box;
@@ -167,7 +168,7 @@ summary:focus {
 }
 
 .settings table tr td input[disabled] {
-  color: #777 !important
+  color: #777 !important;
 }
 
 .settings table tr td input[type='text'], 
@@ -296,4 +297,69 @@ summary:focus {
 
 html[context="webapp"] .toolbar {
   display: none;
+}
+
+html[theme='dark'], 
+html[theme='dark'] body {
+  color: #ebebeb;
+  color-scheme: dark;
+  background-color: #1e1e1e;
+}
+
+html[theme='dark'] .section select,
+html[theme='dark'] .section button,
+html[theme='dark'] .section input[type="file"] {
+  color: #ebebeb;
+  background-color: #1e1e1e;
+  border-color: rgb(255 255 255 / 25%);
+}
+
+html[theme='dark'] details {
+  color: #ebebeb;
+  background-color: rgb(0 0 0 / 25%);
+  border-color: rgb(255 255 255 / 25%);
+}
+
+html[theme='dark'] .settings table tr td {
+  border-color: rgb(255 255 255 / 25%);
+  background-color: rgb(255 255 255 / 10%);
+}
+
+html[theme='dark'] .section select:hover,
+html[theme='dark'] .section button:hover {
+  background-color: rgb(255 255 255 / 10%);
+}
+
+html[theme='dark'] .settings table tr td input[type='text'],
+html[theme='dark'] .settings table tr td input[type='number'] {
+  background-color: #000000;
+}
+
+html[theme='dark'] .input,
+html[theme='dark'] .output,
+html[theme='dark'] .settings,
+html[theme='dark'] .settings table tr td input {
+  border-color: rgb(255 255 255 / 25%);
+}
+
+html[theme='dark'] .cm-s-material-darker .CodeMirror-gutters {
+  background: rgb(0 0 0 / 25%);
+  border-right: solid 1px rgb(255 255 255 / 10%);
+}
+
+html[theme='dark'] .cm-s-material-darker .CodeMirror-linenumber {
+  color: rgb(255 255 255 / 55%);
+}
+
+html[theme='dark'] .settings table tr td input {
+  color: #52a1ff;
+}
+
+html[theme='dark'] summary,
+html[theme='dark'] .settings table tr td label {
+  color: #ebebeb;
+}
+
+html[theme='dark'] .section svg {
+  fill: #ebebeb;
 }

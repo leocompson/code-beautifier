@@ -119,6 +119,7 @@ var config  = {
   },
   "load": function () {
     const clear = document.getElementById("clear");
+    const theme = document.getElementById("theme");
     const select = document.getElementById("select");
     const fileio = document.getElementById("fileio");
     const reload = document.getElementById("reload");
@@ -161,6 +162,16 @@ var config  = {
       config.storage.write("language", config.beautifier.language);
       /*  */
       config.app.update.editor();
+    }, false);
+    /*  */
+    theme.addEventListener("click", function () {
+      let attribute = document.documentElement.getAttribute("theme");
+      attribute = attribute === "dark" ? "light" : "dark";
+      /*  */
+      config.codemirror.editor.input.setOption("theme", attribute === "dark" ? "material-darker" : "default");
+      config.codemirror.editor.output.setOption("theme", attribute === "dark" ? "material-darker" : "default");
+      document.documentElement.setAttribute("theme", attribute);
+      config.storage.write("theme", attribute);
     }, false);
     /*  */
     beautifybutton.addEventListener("click", function () {
@@ -314,8 +325,10 @@ var config  = {
       const language = document.getElementById("language");
       const settings = document.querySelector(".settings");
       const beautifybutton = document.getElementById("beautifybutton");
+      const theme = config.storage.read("theme") !== undefined ? config.storage.read("theme") : "light";
       /*  */
       config.container.inputs = [...settings.querySelectorAll("input")];
+      document.documentElement.setAttribute("theme", theme !== undefined ? theme : "light");
       config.beautifier.language = config.storage.read("language") !== undefined ? config.storage.read("language") : "text/javascript";
       config.beautifier.options = config.storage.read("options") !== undefined ? config.storage.read("options") : config.beautifier.options;
       /*  */
@@ -323,6 +336,8 @@ var config  = {
       config.codemirror.options.mode = config.beautifier.language;
       config.codemirror.editor.input = CodeMirror.fromTextArea(input, config.codemirror.options);
       config.codemirror.editor.output = CodeMirror.fromTextArea(output, config.codemirror.options);
+      config.codemirror.editor.input.setOption("theme", theme === "dark" ? "material-darker" : "default");
+      config.codemirror.editor.output.setOption("theme", theme === "dark" ? "material-darker" : "default");
       /*  */
       config.container.inputs.map(function (input) {
         if (input.id in config.beautifier.options) {
